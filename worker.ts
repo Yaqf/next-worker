@@ -13,6 +13,8 @@ const handleFileHash = (chunkList: FileProps[]) => {
 }
 addEventListener('message', (e) => {
     const chunkList = e.data;
-    postMessage(handleFileHash(chunkList))
+    console.log(111, chunkList);
+    console.log(e, '-----')
+    postMessage(e.data)
 })
 

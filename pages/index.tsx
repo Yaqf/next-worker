@@ -1,5 +1,5 @@
 import {Button, Container, createStyles} from '@mantine/core';
-import React, {useEffect, useRef} from "react";
+import React, {useRef} from "react";
 
 const Styles = createStyles(() => ({
     root: {
@@ -24,45 +24,37 @@ export interface FileProps {
 export default function Home() {
     const {classes} = Styles();
     const workerRef = useRef<Worker>()
+    const iptRef = useRef<HTMLInputElement>(null)
 
     // 生成文件切片
     // 对应切片生成md5 （包括文件名，内容）
     // 上传切片
     // 上传完成后合并切片
-    const handleFileChunk = (file: File, fileSize: number): FileProps[] => {
-        let chunkList: FileProps[] = [];
-        let current = 0;
-        while (current < file.size) {
-            chunkList.push({file: file.slice(current, current + fileSize)})
-            current += fileSize;
-        }
-        return chunkList;
-    }
-
-
-    useEffect(() => {
-        workerRef.current = new Worker(new URL('../worker.ts', import.meta.url))
-        workerRef.current.onmessage = (event: MessageEvent<number>) => {
-            console.log(event.data, '---')
-        }
-        return () => {
-            workerRef.current?.terminate()
-        }
-    }, [])
-
-    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
+    const uploadFile = () => {
+        if (!iptRef.current) return
+        const file = iptRef.current.files?.[0] // 获取文件
         const chunkSize = 1024 * 1024 * 10; // 10M
-        const fileSize = file?.size
+        const fileSize = file?.size // 获取文件大小
         if (file === undefined || fileSize === undefined) return
-        workerRef.current?.postMessage(handleFileChunk(file, chunkSize))
+        let current = 0
+        while (current < fileSize) {
+            workerRef.current = new Worker(new URL('../worker.ts', import.meta.url)) // 创建worker
+            workerRef.current?.postMessage({file: file.slice(current, current + chunkSize)}) // 发送文件切片
+            // workerRef.current!.onmessage = (event: MessageEvent<number>) => {
+            //     console.log(4)
+            //     alert(event.data)
+            //     console.log(event.data, '---')
+            // }
+            workerRef.current?.terminate()
+            current += chunkSize;
+        }
     }
 
     return (
         <Container className={classes.root}>
-            <input type='file' onChange={handleFileChange}/>
+            <input ref={iptRef} type='file'/>
             <div className={classes.btn}>
-                <Button style={{marginRight: '20px'}}>上传</Button>
+                <Button style={{marginRight: '20px'}} onClick={uploadFile}>上传</Button>
                 <Button>暂停</Button>
             </div>
 
